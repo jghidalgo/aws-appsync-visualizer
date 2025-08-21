@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS AppSync GraphQL Visualizer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>AWS AppSync GraphQL Visualizer</h1>
+            <p>Interactive demonstration of GraphQL operations, real-time subscriptions, and data source resolvers</p>
+        </header>
+
+        <div class="operation-controls">
+            <div class="graphql-playground">
+                <h3>GraphQL Playground</h3>
+                <div class="operation-tabs">
+                    <button class="operation-tab active" data-operation="query">Query</button>
+                    <button class="operation-tab" data-operation="mutation">Mutation</button>
+                    <button class="operation-tab" data-operation="subscription">Subscription</button>
+                </div>
+                <div class="graphql-editor">
+                    <textarea id="graphql-query" placeholder="Enter your GraphQL operation...">query GetUser {
+  getUser(id: "123") {
+    id
+    name
+    email
+    posts {
+      id
+      title
+      content
+    }
+  }
+}</textarea>
+                    <button onclick="executeOperation()" class="btn-execute">Execute</button>
+                </div>
+            </div>
+
+            <div class="data-sources">
+                <h3>Data Sources</h3>
+                <div class="source-cards">
+                    <div class="source-card active" data-source="dynamodb">
+                        <h4>DynamoDB</h4>
+                        <div class="source-status">Connected</div>
+                    </div>
+                    <div class="source-card" data-source="lambda">
+                        <h4>Lambda</h4>
+                        <div class="source-status">Available</div>
+                    </div>
+                    <div class="source-card" data-source="elasticsearch">
+                        <h4>OpenSearch</h4>
+                        <div class="source-status">Available</div>
+                    </div>
+                    <div class="source-card" data-source="http">
+                        <h4>HTTP</h4>
+                        <div class="source-status">Available</div>
+                    </div>
+                </div>
+            </div>
+        </div> 
+       <div class="execution-stats">
+            <div class="stat-card">
+                <span class="stat-label">Total Operations:</span>
+                <span class="stat-value" id="total-operations">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Queries:</span>
+                <span class="stat-value" id="query-count">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Mutations:</span>
+                <span class="stat-value" id="mutation-count">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Active Subscriptions:</span>
+                <span class="stat-value" id="subscription-count">0</span>
+            </div>
+        </div>
+
+        <div class="resolver-flow">
+            <h3>Resolver Execution Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-step client-step">
+                    <div class="step-title">GraphQL Client</div>
+                    <div class="step-status" id="client-status">Ready</div>
+                </div>
+
+                <div class="flow-arrow">→</div>
+
+                <div class="flow-step appsync-step">
+                    <div class="step-title">AppSync</div>
+                    <div class="step-status" id="appsync-status">Waiting</div>
+                    <div class="step-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Auth:</span>
+                            <span class="detail-value" id="auth-result">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Resolver:</span>
+                            <span class="detail-value" id="resolver-result">-</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Cache:</span>
+                            <span class="detail-value" id="cache-result">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-arrow">→</div>
+
+                <div class="flow-step datasource-step">
+                    <div class="step-title">Data Source</div>
+                    <div class="step-status" id="datasource-status">Idle</div>
+                    <div class="datasource-type" id="datasource-type">DynamoDB</div>
+                </div>
+
+                <div class="flow-arrow">←</div>
+
+                <div class="flow-step response-step">
+                    <div class="step-title">GraphQL Response</div>
+                    <div class="step-status" id="response-status">-</div>
+                    <div class="response-time" id="response-time">-</div>
+                </div>
+            </div>
+        </div> 
+       <div class="subscription-panel">
+            <h3>Real-time Subscriptions</h3>
+            <div class="subscription-controls">
+                <button onclick="startSubscription()" class="btn-subscribe">Start Subscription</button>
+                <button onclick="stopSubscription()" class="btn-unsubscribe">Stop Subscription</button>
+                <button onclick="triggerUpdate()" class="btn-trigger">Trigger Update</button>
+            </div>
+            <div class="subscription-feed" id="subscription-feed">
+                <div class="feed-message">No active subscriptions</div>
+            </div>
+        </div>
+
+        <div class="resolver-types">
+            <h3>Resolver Types</h3>
+            <div class="resolver-cards">
+                <div class="resolver-card active" data-resolver="vtl">
+                    <h4>VTL (Velocity)</h4>
+                    <div class="resolver-details">
+                        <div class="detail">Template-based mapping</div>
+                        <div class="detail">Direct data source access</div>
+                        <div class="detail">High performance</div>
+                        <div class="detail">Limited logic capabilities</div>
+                    </div>
+                </div>
+
+                <div class="resolver-card" data-resolver="javascript">
+                    <h4>JavaScript</h4>
+                    <div class="resolver-details">
+                        <div class="detail">Full programming language</div>
+                        <div class="detail">Complex business logic</div>
+                        <div class="detail">Better debugging</div>
+                        <div class="detail">Modern development experience</div>
+                    </div>
+                </div>
+
+                <div class="resolver-card" data-resolver="pipeline">
+                    <h4>Pipeline</h4>
+                    <div class="resolver-details">
+                        <div class="detail">Multiple data sources</div>
+                        <div class="detail">Sequential execution</div>
+                        <div class="detail">Data aggregation</div>
+                        <div class="detail">Complex workflows</div>
+                    </div>
+                </div>
+
+                <div class="resolver-card" data-resolver="direct">
+                    <h4>Direct Lambda</h4>
+                    <div class="resolver-details">
+                        <div class="detail">Custom business logic</div>
+                        <div class="detail">External integrations</div>
+                        <div class="detail">Full AWS SDK access</div>
+                        <div class="detail">Higher latency</div>
+                    </div>
+                </div>
+            </div>
+        </div>       
+ <div class="operation-log">
+            <h3>Operation Log</h3>
+            <div class="log-controls">
+                <button onclick="clearLog()" class="btn-clear">Clear Log</button>
+                <label>
+                    <input type="checkbox" id="show-resolver-details" checked>
+                    Show Resolver Details
+                </label>
+            </div>
+            <div class="log-content" id="log-content">
+                <div class="log-entry">Ready to execute GraphQL operations...</div>
+            </div>
+        </div>
+
+        <div class="schema-section">
+            <h3>GraphQL Schema</h3>
+            <div class="schema-tabs">
+                <button class="schema-tab active" data-tab="types">Types</button>
+                <button class="schema-tab" data-tab="queries">Queries</button>
+                <button class="schema-tab" data-tab="mutations">Mutations</button>
+                <button class="schema-tab" data-tab="subscriptions">Subscriptions</button>
+            </div>
+            <div class="schema-content">
+                <pre id="types-schema"><code>type User {
+  id: ID!
+  name: String!
+  email: String!
+  posts: [Post!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+  comments: [Comment!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Comment {
+  id: ID!
+  content: String!
+  author: User!
+  post: Post!
+  createdAt: AWSDateTime!
+}</code></pre>
+
+                <pre id="queries-schema" style="display: none;"><code>type Query {
+  getUser(id: ID!): User
+  listUsers(limit: Int, nextToken: String): UserConnection
+  getPost(id: ID!): Post
+  listPosts(limit: Int, nextToken: String): PostConnection
+  searchPosts(query: String!): [Post!]!
+  getUserPosts(userId: ID!): [Post!]!
+}
+
+type UserConnection {
+  items: [User!]!
+  nextToken: String
+}
+
+type PostConnection {
+  items: [Post!]!
+  nextToken: String
+}</code></pre>          
+      <pre id="mutations-schema" style="display: none;"><code>type Mutation {
+  createUser(input: CreateUserInput!): User!
+  updateUser(input: UpdateUserInput!): User!
+  deleteUser(id: ID!): User!
+  
+  createPost(input: CreatePostInput!): Post!
+  updatePost(input: UpdatePostInput!): Post!
+  deletePost(id: ID!): Post!
+  
+  createComment(input: CreateCommentInput!): Comment!
+  updateComment(input: UpdateCommentInput!): Comment!
+  deleteComment(id: ID!): Comment!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+}
+
+input UpdateUserInput {
+  id: ID!
+  name: String
+  email: String
+}
+
+input CreatePostInput {
+  title: String!
+  content: String!
+  authorId: ID!
+}</code></pre>
+
+                <pre id="subscriptions-schema" style="display: none;"><code>type Subscription {
+  onCreateUser: User
+    @aws_subscribe(mutations: ["createUser"])
+  
+  onUpdateUser: User
+    @aws_subscribe(mutations: ["updateUser"])
+  
+  onDeleteUser: User
+    @aws_subscribe(mutations: ["deleteUser"])
+  
+  onCreatePost: Post
+    @aws_subscribe(mutations: ["createPost"])
+  
+  onUpdatePost: Post
+    @aws_subscribe(mutations: ["updatePost"])
+  
+  onCreateComment(postId: ID!): Comment
+    @aws_subscribe(mutations: ["createComment"])
+}</code></pre>
+            </div>
+        </div> 
+       <div class="features-section">
+            <div class="feature-card">
+                <h3>Authentication & Authorization</h3>
+                <div class="feature-content">
+                    <div class="auth-types">
+                        <div class="auth-type">
+                            <strong>API Key:</strong> Simple authentication for public APIs
+                        </div>
+                        <div class="auth-type">
+                            <strong>Cognito User Pools:</strong> User-based authentication
+                        </div>
+                        <div class="auth-type">
+                            <strong>IAM:</strong> AWS service-to-service authentication
+                        </div>
+                        <div class="auth-type">
+                            <strong>OIDC:</strong> OpenID Connect integration
+                        </div>
+                        <div class="auth-type">
+                            <strong>Lambda Authorizer:</strong> Custom authorization logic
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Real-time Features</h3>
+                <div class="feature-content">
+                    <div class="realtime-info">
+                        <div class="realtime-item">
+                            <strong>WebSocket Connections:</strong> Persistent real-time connections
+                        </div>
+                        <div class="realtime-item">
+                            <strong>Subscription Filtering:</strong> Client-side filtering of updates
+                        </div>
+                        <div class="realtime-item">
+                            <strong>Connection Management:</strong> Automatic reconnection handling
+                        </div>
+                        <div class="realtime-item">
+                            <strong>Offline Support:</strong> Queue mutations when offline
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <h3>Performance & Caching</h3>
+                <div class="feature-content">
+                    <div class="performance-info">
+                        <div class="performance-item">
+                            <strong>Server-side Caching:</strong> Automatic response caching
+                        </div>
+                        <div class="performance-item">
+                            <strong>Client-side Caching:</strong> Intelligent query result caching
+                        </div>
+                        <div class="performance-item">
+                            <strong>DataLoader Pattern:</strong> Batch and cache data source requests
+                        </div>
+                        <div class="performance-item">
+                            <strong>Query Optimization:</strong> Automatic query planning and optimization
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>  
+      <div class="code-examples">
+            <h3>Implementation Examples</h3>
+            <div class="code-tabs">
+                <button class="code-tab active" data-tab="client">Client Code</button>
+                <button class="code-tab" data-tab="resolver">Resolver</button>
+                <button class="code-tab" data-tab="schema-def">Schema Definition</button>
+            </div>
+            <div class="code-content">
+                <pre id="client-code"><code>// Apollo Client setup for AppSync
+import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { setContext } from '@apollo/client/link/context';
+import { createAuthLink } from 'aws-appsync-auth-link';
+
+const httpLink = createHttpLink({
+  uri: 'https://your-appsync-endpoint.appsync-api.region.amazonaws.com/graphql'
+});
+
+const authLink = createAuthLink({
+  url: 'https://your-appsync-endpoint.appsync-api.region.amazonaws.com/graphql',
+  region: 'us-east-1',
+  auth: {
+    type: 'API_KEY',
+    apiKey: 'your-api-key'
+  }
+});
+
+const client = new ApolloClient({
+  link: authLink.concat(httpLink),
+  cache: new InMemoryCache()
+});
+
+// Query execution
+const GET_USER = gql`
+  query GetUser($id: ID!) {
+    getUser(id: $id) {
+      id
+      name
+      email
+      posts {
+        id
+        title
+      }
+    }
+  }
+`;
+
+const { data, loading, error } = useQuery(GET_USER, {
+  variables: { id: '123' }
+});</code></pre>
+
+                <pre id="resolver-code" style="display: none;"><code>// JavaScript Resolver Example
+export function request(ctx) {
+  const { id } = ctx.arguments;
+  
+  return {
+    operation: 'GetItem',
+    key: {
+      id: { S: id }
+    }
+  };
+}
+
+export function response(ctx) {
+  if (ctx.error) {
+    util.error(ctx.error.message, ctx.error.type);
+  }
+  
+  return ctx.result ? util.dynamodb.toDynamoDB(ctx.result) : null;
+}
+
+// VTL Resolver Example
+{
+  "version": "2017-02-28",
+  "operation": "GetItem",
+  "key": {
+    "id": $util.dynamodb.toDynamoDBJson($ctx.args.id)
+  }
+}
+
+## Response Template
+#if($ctx.error)
+  $util.error($ctx.error.message, $ctx.error.type)
+#end
+$util.toJson($ctx.result)</code></pre>     
+           <pre id="schema-def-code" style="display: none;"><code># AppSync Schema with Directives
+type User @aws_api_key @aws_cognito_user_pools {
+  id: ID!
+  name: String!
+  email: String! @aws_auth(cognito_groups: ["admin"])
+  posts: [Post!]! @aws_auth(cognito_groups: ["user", "admin"])
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Post @aws_api_key @aws_cognito_user_pools {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+  comments: [Comment!]!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type Query {
+  getUser(id: ID!): User
+    @aws_api_key
+    @aws_cognito_user_pools
+  
+  listUsers(limit: Int, nextToken: String): UserConnection
+    @aws_cognito_user_pools(cognito_groups: ["admin"])
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+    @aws_cognito_user_pools
+  
+  updateUser(input: UpdateUserInput!): User!
+    @aws_cognito_user_pools(cognito_groups: ["user", "admin"])
+}
+
+type Subscription {
+  onCreateUser: User
+    @aws_subscribe(mutations: ["createUser"])
+    @aws_cognito_user_pools
+}</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
